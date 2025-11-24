@@ -1,7 +1,9 @@
-import { Download, RefreshCw, X } from 'lucide-react';
+import { Download, ExternalLink, RefreshCw, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import type { UpdateStatus } from '../electron';
+
+const RELEASES_URL = 'https://github.com/pheuter/claude-agent-desktop/releases';
 
 export default function UpdateNotification() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
@@ -43,6 +45,12 @@ export default function UpdateNotification() {
     await window.electron.update.download();
   };
 
+  const handleViewReleaseNotes = async () => {
+    const version = status?.updateInfo?.version;
+    const url = version ? `${RELEASES_URL}/tag/v${version}` : RELEASES_URL;
+    await window.electron.shell.openExternal(url);
+  };
+
   const handleDismiss = () => {
     setIsDismissed(true);
   };
@@ -54,15 +62,17 @@ export default function UpdateNotification() {
           <RefreshCw className="h-3.5 w-3.5" />
         </span>
         <div className="flex-1 space-y-1.5">
-          <div>
+          <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
               Update available: {status.updateInfo?.version}
             </p>
-            {status.updateInfo?.releaseNotes && (
-              <p className="text-xs text-blue-700 dark:text-blue-300">
-                {status.updateInfo.releaseNotes}
-              </p>
-            )}
+            <button
+              onClick={handleViewReleaseNotes}
+              className="flex items-center gap-1 text-xs text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-100"
+            >
+              What&apos;s new
+              <ExternalLink className="h-3 w-3" />
+            </button>
           </div>
           {status.downloading && (
             <div className="space-y-1">
