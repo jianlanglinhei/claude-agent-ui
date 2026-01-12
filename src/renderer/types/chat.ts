@@ -13,7 +13,7 @@ import type {
   WebSearchInput
 } from '@anthropic-ai/claude-agent-sdk/sdk-tools';
 
-import type { ToolUse } from '@/electron';
+import type { ToolUse } from '@/types/stream';
 
 // Re-export SDK types with friendly names
 export type ReadInput = FileReadInput;

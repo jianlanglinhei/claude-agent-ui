@@ -1,8 +1,8 @@
+import { randomUUID } from 'crypto';
 import { existsSync } from 'fs';
 import { createRequire } from 'module';
 import { query, type Query, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 
-import { getSessionId, messageQueue, resetAbortFlag } from '../main/lib/message-queue';
 import type { ToolInput } from '../renderer/types/chat';
 import { parsePartialJson } from '../renderer/utils/parsePartialJson';
 import { broadcast } from './sse';
@@ -75,6 +75,20 @@ let isStreamingMessage = false;
 const messages: MessageWire[] = [];
 const streamIndexToToolId: Map<number, string> = new Map();
 let messageSequence = 0;
+let sessionId = randomUUID();
+type MessageQueueItem = {
+  message: SDKUserMessage['message'];
+  resolve: () => void;
+};
+const messageQueue: MessageQueueItem[] = [];
+
+function getSessionId(): string {
+  return sessionId;
+}
+
+function resetAbortFlag(): void {
+  shouldAbortSession = false;
+}
 
 function resolveClaudeCodeCli(): string {
   const cliPath = requireModule.resolve('@anthropic-ai/claude-agent-sdk/cli.js');
@@ -306,6 +320,9 @@ export function initializeAgent(nextAgentDir: string, initialPrompt?: string | n
   agentDir = nextAgentDir;
   hasInitialPrompt = Boolean(initialPrompt && initialPrompt.trim());
   messageSequence = 0;
+  sessionId = randomUUID();
+  messages.length = 0;
+  messageQueue.length = 0;
   console.log(`[agent] init dir=${agentDir} initialPrompt=${hasInitialPrompt ? 'yes' : 'no'}`);
   if (hasInitialPrompt) {
     void enqueueUserMessage(initialPrompt!.trim());

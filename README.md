@@ -1,41 +1,31 @@
-# Claude Agent Desktop
+# Claude Agent Web UI
 
-![Claude Agent Desktop screenshot](https://github.com/user-attachments/assets/d7199fcc-a5ba-45ce-917a-e455ff430a2d)
+Browser-based UI + Bun HTTP/SSE server for agentic chat with the Claude Agent SDK.
 
-> [!IMPORTANT]
-> This project is not affiliated with [Anthropic](https://www.anthropic.com)
+## Why
 
-## Why This App?
-
-The [Claude Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview) is a powerful toolkit for building AI agents that can execute code, manage files, search the web, and perform complex multi-step tasks. However, using it typically requires programming knowledge, terminal commands, and installing developer tools like Node.js, Python, and package managers.
-
-**Claude Agent Desktop removes these barriers entirely.** Designed for all knowledge workers, not just engineers, it packages the full power of the Claude Agent SDK into a simple desktop application:
-
-- **Zero technical setup** — All required runtimes are bundled: [bun](https://bun.sh) for JavaScript/TypeScript, [uv](https://docs.astral.sh/uv/) for Python, and portable Git/Unix tools for Windows. No installation of development tools needed.
-- **Accessible workspace** — Your agent workspace defaults to `~/Desktop/claude-agent`, a shared environment for mutual collaboration. The agent can build applications, generate spreadsheets, and create documents here, while you can drag and drop your own files into the folder for the agent to analyze and work with.
-- **Pre-configured [Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)** — Built-in capabilities for document handling, data analysis, and more are automatically available without any configuration.
-- **Full agent capabilities** — Execute scripts, analyze files, create documents, automate workflows, and tackle complex knowledge work—all through natural conversation.
-
-Whether you're a researcher analyzing data, a writer managing documents, or anyone who wants AI to actively work on your computer rather than just chat, this app lets you harness frontier agent capabilities without opening the terminal or writing a single line of code.
-
-![Claude Agent Desktop screenshot](https://github.com/user-attachments/assets/6ff7054d-d50c-4535-bddf-e8bc500e418f)
-
-## Download
-
-Pre-built binaries for **macOS** and **Windows** are available on the [Releases page](https://github.com/pheuter/claude-agent-desktop/releases).
+This project provides a lightweight, single-process web UI for chatting with a Claude Agent running in a specified workspace directory. The agent runs locally and the UI is served in the browser from the same server and port.
 
 ## Prerequisites
 
-- Install [Bun](https://bun.sh/) (used for package management, scripts, and tests).
-- Anthropic API key via `ANTHROPIC_API_KEY` or in app settings.
+- Install [Bun](https://bun.sh/) (package manager, scripts, and runtime).
+- Configure Claude authentication in your agent directory (e.g. `.claude/settings.json`).
 
 ## Quick start
 
 ```bash
 bun install
-bun run dev      # builds skills, starts Electron + Vite
+bun run start -- --agent-dir /path/to/agent
 ```
 
-## Auto-updates
+Then open `http://localhost:3000`.
 
-Packaged builds check this repository's GitHub Releases for updates via `electron-updater`. Set `GH_TOKEN` when running `electron-builder` to publish releases with update metadata, and optionally provide `UPDATE_FEED_URL` to point the app at a custom update server.
+## Commands
+
+```bash
+bun run server     # Start Bun HTTP/SSE server
+bun run dev:web    # Start Vite dev server for Web UI
+bun run build:web  # Build Web UI into dist/
+bun run start      # Build Web UI and start server (single port)
+bun run dev:single # Build Web UI in watch mode and start server (single port)
+```

@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
 import { chatClient } from '@/api/chatClient';
-import type { ToolUse } from '@/electron';
 import type { Message, ToolInput } from '@/types/chat';
+import type { ToolUse } from '@/types/stream';
 import { parsePartialJson } from '@/utils/parsePartialJson';
 
 export function useClaudeChat(): {

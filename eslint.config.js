@@ -33,21 +33,6 @@ export default defineConfig(
       }
     }
   },
-  // Main and preload processes (Node.js environment)
-  {
-    files: ['src/main/**/*.ts', 'src/preload/**/*.ts'],
-    languageOptions: {
-      parserOptions: {
-        tsconfigRootDir: import.meta.dirname
-      },
-      globals: {
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        process: 'readonly',
-        Buffer: 'readonly'
-      }
-    }
-  },
   // Renderer process (Browser + React environment)
   {
     files: ['src/renderer/**/*.{ts,tsx}'],

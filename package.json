@@ -1,19 +1,15 @@
 {
   "name": "claude-agent-desktop",
-  "description": "Open-source desktop client for Claude Agent SDK",
+  "description": "Browser-based UI + Bun HTTP/SSE server for Claude Agent SDK",
   "type": "module",
   "version": "0.1.3",
   "license": "MIT",
-  "main": "out/main/index.js",
   "packageManager": "bun@1.3.2",
   "scripts": {
-    "dev": "node scripts/preDev.js && electron-vite dev",
+    "dev": "bun run dev:single",
     "dev:web": "vite",
     "dev:single": "bun run build:web --watch & bun run server",
-    "build": "electron-vite build",
     "build:web": "vite build",
-    "build:mac": "bun run build && electron-builder --mac --publish always",
-    "build:win": "bun run build && electron-builder --win --publish always",
     "server": "bun src/server/index.ts",
     "start": "bun run build:web && bun run server",
     "typecheck": "tsc --noEmit",
@@ -21,7 +17,7 @@
     "test": "bun test",
     "format": "prettier --experimental-cli --write .",
     "format:check": "prettier --experimental-cli --check --log-level warn .",
-    "clean": "rm -rf node_modules out dist .turbo .eslintcache *.tsbuildinfo resources/bun resources/bun.exe resources/uv resources/uv.exe resources/jq.exe resources/git-portable resources/msys2 resources/.bun-version resources/.uv-version resources/.jq-version resources/.git-portable-version resources/.msys2-version"
+    "clean": "rm -rf node_modules dist .turbo .eslintcache *.tsbuildinfo"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.51",
@@ -31,14 +27,6 @@
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"
-  },
-  "optionalDependencies": {
-    "@img/sharp-darwin-arm64": "^0.33.5",
-    "@img/sharp-darwin-x64": "^0.33.5",
-    "@img/sharp-linux-arm": "^0.33.5",
-    "@img/sharp-linux-arm64": "^0.33.5",
-    "@img/sharp-linux-x64": "^0.33.5",
-    "@img/sharp-win32-x64": "^0.33.5"
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.0",
@@ -52,10 +40,6 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.21",
-    "electron": "^39.2.3",
-    "electron-builder": "^26.0.12",
-    "electron-updater": "^6.6.2",
-    "electron-vite": "^4.0.1",
     "eslint": "^9.39.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-eslint-comments": "^3.2.0",
@@ -68,96 +52,5 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.0",
     "vite": "^7.1.12"
-  },
-  "build": {
-    "appId": "com.pheuter.claude-agent-desktop",
-    "productName": "Claude Agent Desktop",
-    "icon": "static/icon.png",
-    "beforeBuild": "scripts/beforeBuild.js",
-    "afterPack": "scripts/afterPack.js",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "out/**/*",
-      "package.json"
-    ],
-    "asarUnpack": [
-      "out/node_modules/@anthropic-ai/claude-agent-sdk/**",
-      "out/node_modules/@img/**/*",
-      "out/.claude/**/*"
-    ],
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "pheuter",
-        "repo": "claude-agent-desktop",
-        "releaseType": "release"
-      }
-    ],
-    "mac": {
-      "target": [
-        "zip"
-      ],
-      "category": "public.app-category.developer-tools",
-      "electronLanguages": [
-        "en",
-        "en-US"
-      ],
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "notarize": true,
-      "entitlements": "resources/entitlements.mac.plist",
-      "entitlementsInherit": "resources/entitlements.mac.inherit.plist",
-      "extendInfo": {
-        "NSDesktopFolderUsageDescription": "Claude Agent Desktop needs access to your Desktop folder to create and manage workspace files.",
-        "NSDocumentsFolderUsageDescription": "Claude Agent Desktop needs access to your Documents folder to read and write files.",
-        "NSDownloadsFolderUsageDescription": "Claude Agent Desktop needs access to your Downloads folder to read and write files."
-      },
-      "extraResources": [
-        {
-          "from": "resources/bun",
-          "to": "bun"
-        },
-        {
-          "from": "resources/uv",
-          "to": "uv"
-        }
-      ]
-    },
-    "win": {
-      "target": [
-        "nsis"
-      ],
-      "extraResources": [
-        {
-          "from": "resources/bun.exe",
-          "to": "bun.exe"
-        },
-        {
-          "from": "resources/uv.exe",
-          "to": "uv.exe"
-        },
-        {
-          "from": "resources/jq.exe",
-          "to": "jq.exe"
-        },
-        {
-          "from": "resources/git-portable",
-          "to": "git-portable"
-        },
-        {
-          "from": "resources/msys2",
-          "to": "msys2"
-        }
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "artifactName": "${productName}-Setup-${version}.${ext}",
-      "deleteAppDataOnUninstall": false
-    }
   }
 }

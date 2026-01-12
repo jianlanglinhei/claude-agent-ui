@@ -1,6 +1,4 @@
 import type { ContentBlock } from '@/types/chat';
-
-import type { SendMessagePayload, SendMessageResponse } from '../../shared/types/ipc';
 import type {
   ContentBlockStop,
   ThinkingChunk,
@@ -10,7 +8,9 @@ import type {
   ToolResultDelta,
   ToolResultStart,
   ToolUse
-} from '../electron';
+} from '@/types/stream';
+
+import type { SendMessagePayload, SendMessageResponse } from '../../shared/types/ipc';
 import { onEvent } from './eventBus';
 
 export type ChatInitPayload = {

@@ -7,14 +7,7 @@ const ExternalLink: Components['a'] = ({ href, children, ...props }) => {
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     if (href) {
-      const openExternal = window.electron?.shell?.openExternal;
-      if (openExternal) {
-        openExternal(href).catch((error) => {
-          console.error('Failed to open external link:', error);
-        });
-      } else {
-        window.open(href, '_blank', 'noopener,noreferrer');
-      }
+      window.open(href, '_blank', 'noopener,noreferrer');
     }
   };
 
