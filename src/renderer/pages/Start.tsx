@@ -44,7 +44,7 @@ export default function Start({ onStarted }: StartProps) {
   return (
     <div className="flex h-screen items-center justify-center bg-neutral-50 px-6 text-neutral-900">
       <div className="w-full max-w-2xl rounded-3xl border border-neutral-200 bg-white p-8 shadow-sm">
-        <div className="text-lg font-semibold">Start Claude Agent</div>
+        <div className="text-lg font-semibold">Start Agent</div>
         <div className="mt-2 text-sm text-neutral-500">
           Enter the initial prompt to begin the session.
         </div>

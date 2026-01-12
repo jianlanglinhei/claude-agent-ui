@@ -57,7 +57,7 @@ export default function Chat({ agentDir, sessionState }: ChatProps) {
       <div className="flex w-3/4 flex-col border-r border-neutral-200">
         <div className="flex items-center justify-between px-6 py-4">
           <div>
-            <div className="text-sm font-semibold text-neutral-700">Claude Agent</div>
+            <div className="text-sm font-semibold text-neutral-700">Agent</div>
             <div className="text-xs text-neutral-500">Status: {sessionState}</div>
           </div>
           <div className="flex items-center gap-3 text-xs text-neutral-400">
