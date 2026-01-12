@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { existsSync } from 'fs';
+import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import { createRequire } from 'module';
 import { query, type Query, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 
@@ -14,6 +14,19 @@ type ToolUseState = {
   name: string;
   input: Record<string, unknown>;
   streamIndex: number;
+  inputJson?: string;
+  parsedInput?: ToolInput;
+  result?: string;
+  isLoading?: boolean;
+  isError?: boolean;
+  subagentCalls?: SubagentToolCall[];
+};
+
+type SubagentToolCall = {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+  streamIndex?: number;
   inputJson?: string;
   parsedInput?: ToolInput;
   result?: string;
@@ -74,8 +87,12 @@ let isInterruptingResponse = false;
 let isStreamingMessage = false;
 const messages: MessageWire[] = [];
 const streamIndexToToolId: Map<number, string> = new Map();
+const childToolToParent: Map<string, string> = new Map();
 let messageSequence = 0;
 let sessionId = randomUUID();
+let logStream: ReturnType<typeof createWriteStream> | null = null;
+let logFilePath = '';
+const logLines: string[] = [];
 type MessageQueueItem = {
   message: SDKUserMessage['message'];
   resolve: () => void;
@@ -195,6 +212,62 @@ function handleToolUseStart(tool: {
   });
 }
 
+function handleSubagentToolUseStart(
+  parentToolUseId: string,
+  tool: {
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+    streamIndex?: number;
+  }
+): void {
+  const parentTool = findToolBlockById(parentToolUseId);
+  if (!parentTool) {
+    return;
+  }
+  childToolToParent.set(tool.id, parentToolUseId);
+  if (!parentTool.tool.subagentCalls) {
+    parentTool.tool.subagentCalls = [];
+  }
+  const existing = parentTool.tool.subagentCalls.find((call) => call.id === tool.id);
+  if (existing) {
+    existing.name = tool.name;
+    existing.input = tool.input;
+    existing.streamIndex = tool.streamIndex;
+    return;
+  }
+  parentTool.tool.subagentCalls.push({
+    id: tool.id,
+    name: tool.name,
+    input: tool.input,
+    streamIndex: tool.streamIndex,
+    inputJson: JSON.stringify(tool.input, null, 2),
+    isLoading: true
+  });
+}
+
+function ensureSubagentToolPlaceholder(parentToolUseId: string, toolUseId: string): void {
+  const parentTool = findToolBlockById(parentToolUseId);
+  if (!parentTool) {
+    return;
+  }
+  if (!parentTool.tool.subagentCalls) {
+    parentTool.tool.subagentCalls = [];
+  }
+  const existing = parentTool.tool.subagentCalls.find((call) => call.id === toolUseId);
+  if (existing) {
+    return;
+  }
+  childToolToParent.set(toolUseId, parentToolUseId);
+  parentTool.tool.subagentCalls.push({
+    id: toolUseId,
+    name: 'Tool',
+    input: {},
+    inputJson: '{}',
+    isLoading: true
+  });
+}
+
 function handleToolInputDelta(index: number, toolId: string, delta: string): void {
   const message = ensureAssistantMessage();
   const contentArray = ensureContentArray(message);
@@ -209,6 +282,46 @@ function handleToolInputDelta(index: number, toolId: string, delta: string): voi
   const parsedInput = parsePartialJson<ToolInput>(newInputJson);
   if (parsedInput) {
     toolBlock.tool.parsedInput = parsedInput;
+  }
+}
+
+function handleSubagentToolInputDelta(
+  parentToolUseId: string,
+  toolId: string,
+  delta: string
+): void {
+  const parentTool = findToolBlockById(parentToolUseId);
+  if (!parentTool?.tool.subagentCalls) {
+    return;
+  }
+  const subCall = parentTool.tool.subagentCalls.find((call) => call.id === toolId);
+  if (!subCall) {
+    return;
+  }
+  const newInputJson = `${subCall.inputJson ?? ''}${delta}`;
+  subCall.inputJson = newInputJson;
+  const parsedInput = parsePartialJson<ToolInput>(newInputJson);
+  if (parsedInput) {
+    subCall.parsedInput = parsedInput;
+  }
+}
+
+function finalizeSubagentToolInput(parentToolUseId: string, toolId: string): void {
+  const parentTool = findToolBlockById(parentToolUseId);
+  if (!parentTool?.tool.subagentCalls) {
+    return;
+  }
+  const subCall = parentTool.tool.subagentCalls.find((call) => call.id === toolId);
+  if (!subCall?.inputJson) {
+    return;
+  }
+  try {
+    subCall.parsedInput = JSON.parse(subCall.inputJson) as ToolInput;
+  } catch {
+    const parsed = parsePartialJson<ToolInput>(subCall.inputJson);
+    if (parsed) {
+      subCall.parsedInput = parsed;
+    }
   }
 }
 
@@ -243,29 +356,17 @@ function handleContentBlockStop(index: number, toolId?: string): void {
 }
 
 function handleToolResultStart(toolUseId: string, content: string, isError: boolean): void {
-  const message = ensureAssistantMessage();
-  const contentArray = ensureContentArray(message);
-  const toolBlock = contentArray.find(
-    (block) => block.type === 'tool_use' && block.tool?.id === toolUseId
-  );
-  if (!toolBlock || toolBlock.type !== 'tool_use' || !toolBlock.tool) {
+  if (handleSubagentToolResultStart(toolUseId, content, isError)) {
     return;
   }
-  toolBlock.tool.result = content;
-  toolBlock.tool.isError = isError;
+  setToolResult(toolUseId, content, isError);
 }
 
 function handleToolResultComplete(toolUseId: string, content: string, isError?: boolean): void {
-  const message = ensureAssistantMessage();
-  const contentArray = ensureContentArray(message);
-  const toolBlock = contentArray.find(
-    (block) => block.type === 'tool_use' && block.tool?.id === toolUseId
-  );
-  if (!toolBlock || toolBlock.type !== 'tool_use' || !toolBlock.tool) {
+  if (handleSubagentToolResultComplete(toolUseId, content, isError)) {
     return;
   }
-  toolBlock.tool.result = content;
-  toolBlock.tool.isError = isError;
+  setToolResult(toolUseId, content, isError);
 }
 
 function handleMessageComplete(): void {
@@ -304,12 +405,197 @@ function handleMessageError(error: string): void {
   });
 }
 
+function findToolBlockById(toolUseId: string): { tool: ToolUseState } | null {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (message.role !== 'assistant') {
+      continue;
+    }
+    if (typeof message.content === 'string') {
+      continue;
+    }
+    const toolBlock = message.content.find(
+      (block) => block.type === 'tool_use' && block.tool?.id === toolUseId
+    );
+    if (toolBlock && toolBlock.type === 'tool_use' && toolBlock.tool) {
+      return { tool: toolBlock.tool };
+    }
+  }
+  return null;
+}
+
+function appendToolResultDelta(toolUseId: string, delta: string): void {
+  if (appendSubagentToolResultDelta(toolUseId, delta)) {
+    return;
+  }
+  const toolBlock = findToolBlockById(toolUseId);
+  if (!toolBlock) {
+    return;
+  }
+  toolBlock.tool.result = `${toolBlock.tool.result ?? ''}${delta}`;
+}
+
+function handleSubagentToolResultStart(
+  toolUseId: string,
+  content: string,
+  isError: boolean
+): boolean {
+  const parentToolUseId = childToolToParent.get(toolUseId);
+  if (!parentToolUseId) {
+    return false;
+  }
+  const parentTool = findToolBlockById(parentToolUseId);
+  if (!parentTool?.tool.subagentCalls) {
+    return false;
+  }
+  const subCall = parentTool.tool.subagentCalls.find((call) => call.id === toolUseId);
+  if (!subCall) {
+    return false;
+  }
+  subCall.result = content;
+  subCall.isError = isError;
+  subCall.isLoading = true;
+  return true;
+}
+
+function handleSubagentToolResultComplete(
+  toolUseId: string,
+  content: string,
+  isError?: boolean
+): boolean {
+  const parentToolUseId = childToolToParent.get(toolUseId);
+  if (!parentToolUseId) {
+    return false;
+  }
+  const parentTool = findToolBlockById(parentToolUseId);
+  if (!parentTool?.tool.subagentCalls) {
+    return false;
+  }
+  const subCall = parentTool.tool.subagentCalls.find((call) => call.id === toolUseId);
+  if (!subCall) {
+    return false;
+  }
+  subCall.result = content;
+  if (typeof isError === 'boolean') {
+    subCall.isError = isError;
+  }
+  subCall.isLoading = false;
+  return true;
+}
+
+function appendSubagentToolResultDelta(toolUseId: string, delta: string): boolean {
+  const parentToolUseId = childToolToParent.get(toolUseId);
+  if (!parentToolUseId) {
+    return false;
+  }
+  const parentTool = findToolBlockById(parentToolUseId);
+  if (!parentTool?.tool.subagentCalls) {
+    return false;
+  }
+  const subCall = parentTool.tool.subagentCalls.find((call) => call.id === toolUseId);
+  if (!subCall) {
+    return false;
+  }
+  subCall.result = `${subCall.result ?? ''}${delta}`;
+  subCall.isLoading = true;
+  return true;
+}
+
+function setToolResult(toolUseId: string, content: string, isError?: boolean): void {
+  const toolBlock = findToolBlockById(toolUseId);
+  if (!toolBlock) {
+    return;
+  }
+  toolBlock.tool.result = content;
+  if (typeof isError === 'boolean') {
+    toolBlock.tool.isError = isError;
+  }
+}
+
+function getToolResult(toolUseId: string): string | undefined {
+  const toolBlock = findToolBlockById(toolUseId);
+  return toolBlock?.tool.result;
+}
+
+function appendToolResultContent(toolUseId: string, content: string, isError?: boolean): string {
+  const existing = getToolResult(toolUseId);
+  const next = existing ? `${existing}\n${content}` : content;
+  setToolResult(toolUseId, next, isError);
+  return next;
+}
+
+function formatAssistantContent(content: unknown): string {
+  if (!content) {
+    return '';
+  }
+  if (typeof content === 'string') {
+    return content;
+  }
+  if (!Array.isArray(content)) {
+    return '';
+  }
+  const parts: string[] = [];
+  for (const block of content) {
+    if (typeof block === 'string') {
+      parts.push(block);
+      continue;
+    }
+    if (!block || typeof block !== 'object') {
+      continue;
+    }
+    if ('type' in block && block.type === 'text' && 'text' in block) {
+      parts.push(String(block.text ?? ''));
+      continue;
+    }
+    if ('type' in block && block.type === 'thinking' && 'thinking' in block) {
+      const text = String(block.thinking ?? '').trim();
+      if (text) {
+        parts.push(`Thinking:\n${text}`);
+      }
+      continue;
+    }
+    if ('text' in block && typeof block.text === 'string') {
+      parts.push(block.text);
+    }
+  }
+  return parts
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+function createLogStream(dir: string): void {
+  if (logStream) {
+    logStream.end();
+    logStream = null;
+  }
+  const logsDir = `${dir}/logs`;
+  mkdirSync(logsDir, { recursive: true });
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  logFilePath = `${logsDir}/agent-${timestamp}.log`;
+  logStream = createWriteStream(logFilePath, { flags: 'a' });
+  logLines.length = 0;
+}
+
+function appendLogLine(line: string): void {
+  logLines.push(line);
+  if (logLines.length > 2000) {
+    logLines.shift();
+  }
+  logStream?.write(`${line}\n`);
+  broadcast('chat:log', line);
+}
+
 export function getAgentState(): {
   agentDir: string;
   sessionState: SessionState;
   hasInitialPrompt: boolean;
 } {
   return { agentDir, sessionState, hasInitialPrompt };
+}
+
+export function getLogLines(): string[] {
+  return logLines;
 }
 
 export function getMessages(): MessageWire[] {
@@ -323,6 +609,8 @@ export function initializeAgent(nextAgentDir: string, initialPrompt?: string | n
   sessionId = randomUUID();
   messages.length = 0;
   messageQueue.length = 0;
+  childToolToParent.clear();
+  createLogStream(agentDir);
   console.log(`[agent] init dir=${agentDir} initialPrompt=${hasInitialPrompt ? 'yes' : 'no'}`);
   if (hasInitialPrompt) {
     void enqueueUserMessage(initialPrompt!.trim());
@@ -439,6 +727,13 @@ async function startStreamingSession(): Promise<void> {
 
     console.log('[agent] session started');
     for await (const sdkMessage of querySession) {
+      try {
+        const line = `${new Date().toISOString()} ${JSON.stringify(sdkMessage)}`;
+        console.log('[agent][sdk]', JSON.stringify(sdkMessage));
+        appendLogLine(line);
+      } catch (error) {
+        console.log('[agent][sdk] (unserializable)', error);
+      }
       if (shouldAbortSession) {
         break;
       }
@@ -447,8 +742,25 @@ async function startStreamingSession(): Promise<void> {
         const streamEvent = sdkMessage.event;
         if (streamEvent.type === 'content_block_delta') {
           if (streamEvent.delta.type === 'text_delta') {
-            broadcast('chat:message-chunk', streamEvent.delta.text);
-            appendTextChunk(streamEvent.delta.text);
+            if (sdkMessage.parent_tool_use_id) {
+              const parentToolUseId = childToolToParent.get(sdkMessage.parent_tool_use_id) ?? null;
+              if (parentToolUseId) {
+                broadcast('chat:subagent-tool-result-delta', {
+                  parentToolUseId,
+                  toolUseId: sdkMessage.parent_tool_use_id,
+                  delta: streamEvent.delta.text
+                });
+              } else {
+                broadcast('chat:tool-result-delta', {
+                  toolUseId: sdkMessage.parent_tool_use_id,
+                  delta: streamEvent.delta.text
+                });
+              }
+              appendToolResultDelta(sdkMessage.parent_tool_use_id, streamEvent.delta.text);
+            } else {
+              broadcast('chat:message-chunk', streamEvent.delta.text);
+              appendTextChunk(streamEvent.delta.text);
+            }
           } else if (streamEvent.delta.type === 'thinking_delta') {
             broadcast('chat:thinking-chunk', {
               index: streamEvent.index,
@@ -457,12 +769,25 @@ async function startStreamingSession(): Promise<void> {
             handleThinkingChunk(streamEvent.index, streamEvent.delta.thinking);
           } else if (streamEvent.delta.type === 'input_json_delta') {
             const toolId = streamIndexToToolId.get(streamEvent.index) ?? '';
-            broadcast('chat:tool-input-delta', {
-              index: streamEvent.index,
-              toolId,
-              delta: streamEvent.delta.partial_json
-            });
-            handleToolInputDelta(streamEvent.index, toolId, streamEvent.delta.partial_json);
+            if (sdkMessage.parent_tool_use_id) {
+              broadcast('chat:subagent-tool-input-delta', {
+                parentToolUseId: sdkMessage.parent_tool_use_id,
+                toolId,
+                delta: streamEvent.delta.partial_json
+              });
+              handleSubagentToolInputDelta(
+                sdkMessage.parent_tool_use_id,
+                toolId,
+                streamEvent.delta.partial_json
+              );
+            } else {
+              broadcast('chat:tool-input-delta', {
+                index: streamEvent.index,
+                toolId,
+                delta: streamEvent.delta.partial_json
+              });
+              handleToolInputDelta(streamEvent.index, toolId, streamEvent.delta.partial_json);
+            }
           }
         } else if (streamEvent.type === 'content_block_start') {
           if (streamEvent.content_block.type === 'thinking') {
@@ -476,15 +801,24 @@ async function startStreamingSession(): Promise<void> {
               input: streamEvent.content_block.input || {},
               streamIndex: streamEvent.index
             };
-            broadcast('chat:tool-use-start', toolPayload);
-            handleToolUseStart(toolPayload);
+            if (sdkMessage.parent_tool_use_id) {
+              broadcast('chat:subagent-tool-use', {
+                parentToolUseId: sdkMessage.parent_tool_use_id,
+                tool: toolPayload
+              });
+              handleSubagentToolUseStart(sdkMessage.parent_tool_use_id, toolPayload);
+            } else {
+              broadcast('chat:tool-use-start', toolPayload);
+              handleToolUseStart(toolPayload);
+            }
           } else if (
             (streamEvent.content_block.type === 'web_search_tool_result' ||
               streamEvent.content_block.type === 'web_fetch_tool_result' ||
               streamEvent.content_block.type === 'code_execution_tool_result' ||
               streamEvent.content_block.type === 'bash_code_execution_tool_result' ||
               streamEvent.content_block.type === 'text_editor_code_execution_tool_result' ||
-              streamEvent.content_block.type === 'mcp_tool_result') &&
+              streamEvent.content_block.type === 'mcp_tool_result' ||
+              streamEvent.content_block.type === 'tool_result') &&
             'tool_use_id' in streamEvent.content_block
           ) {
             const toolResultBlock = streamEvent.content_block as {
@@ -501,11 +835,25 @@ async function startStreamingSession(): Promise<void> {
             }
 
             if (contentStr) {
-              broadcast('chat:tool-result-start', {
-                toolUseId: toolResultBlock.tool_use_id,
-                content: contentStr,
-                isError: toolResultBlock.is_error || false
-              });
+              const parentToolUseId =
+                childToolToParent.get(toolResultBlock.tool_use_id) ?? sdkMessage.parent_tool_use_id;
+              if (parentToolUseId) {
+                if (!childToolToParent.has(toolResultBlock.tool_use_id)) {
+                  ensureSubagentToolPlaceholder(parentToolUseId, toolResultBlock.tool_use_id);
+                }
+                broadcast('chat:subagent-tool-result-start', {
+                  parentToolUseId,
+                  toolUseId: toolResultBlock.tool_use_id,
+                  content: contentStr,
+                  isError: toolResultBlock.is_error || false
+                });
+              } else {
+                broadcast('chat:tool-result-start', {
+                  toolUseId: toolResultBlock.tool_use_id,
+                  content: contentStr,
+                  isError: toolResultBlock.is_error || false
+                });
+              }
               handleToolResultStart(
                 toolResultBlock.tool_use_id,
                 contentStr,
@@ -515,14 +863,58 @@ async function startStreamingSession(): Promise<void> {
           }
         } else if (streamEvent.type === 'content_block_stop') {
           const toolId = streamIndexToToolId.get(streamEvent.index);
-          broadcast('chat:content-block-stop', {
-            index: streamEvent.index,
-            toolId: toolId || undefined
-          });
-          handleContentBlockStop(streamEvent.index, toolId || undefined);
+          if (sdkMessage.parent_tool_use_id) {
+            if (toolId) {
+              finalizeSubagentToolInput(sdkMessage.parent_tool_use_id, toolId);
+            }
+          } else {
+            broadcast('chat:content-block-stop', {
+              index: streamEvent.index,
+              toolId: toolId || undefined
+            });
+            handleContentBlockStop(streamEvent.index, toolId || undefined);
+          }
         }
       } else if (sdkMessage.type === 'assistant') {
         const assistantMessage = sdkMessage.message;
+        if (sdkMessage.parent_tool_use_id && assistantMessage.content) {
+          for (const block of assistantMessage.content) {
+            if (
+              typeof block === 'object' &&
+              block !== null &&
+              'type' in block &&
+              block.type === 'tool_use' &&
+              'id' in block &&
+              'name' in block
+            ) {
+              const toolBlock = block as {
+                id: string;
+                name: string;
+                input?: Record<string, unknown>;
+              };
+              const payload = {
+                id: toolBlock.id,
+                name: toolBlock.name,
+                input: toolBlock.input || {}
+              };
+              broadcast('chat:subagent-tool-use', {
+                parentToolUseId: sdkMessage.parent_tool_use_id,
+                tool: payload
+              });
+              handleSubagentToolUseStart(sdkMessage.parent_tool_use_id, payload);
+            }
+          }
+        }
+        if (sdkMessage.parent_tool_use_id) {
+          const text = formatAssistantContent(assistantMessage.content);
+          if (text) {
+            const next = appendToolResultContent(sdkMessage.parent_tool_use_id, text);
+            broadcast('chat:tool-result-complete', {
+              toolUseId: sdkMessage.parent_tool_use_id,
+              content: next
+            });
+          }
+        }
         if (assistantMessage.content) {
           for (const block of assistantMessage.content) {
             if (
@@ -564,11 +956,25 @@ async function startStreamingSession(): Promise<void> {
                 contentStr = String(toolResultBlock.content);
               }
 
-              broadcast('chat:tool-result-complete', {
-                toolUseId: toolResultBlock.tool_use_id,
-                content: contentStr,
-                isError: toolResultBlock.is_error || false
-              });
+              const parentToolUseId =
+                childToolToParent.get(toolResultBlock.tool_use_id) ?? sdkMessage.parent_tool_use_id;
+              if (parentToolUseId) {
+                if (!childToolToParent.has(toolResultBlock.tool_use_id)) {
+                  ensureSubagentToolPlaceholder(parentToolUseId, toolResultBlock.tool_use_id);
+                }
+                broadcast('chat:subagent-tool-result-complete', {
+                  parentToolUseId,
+                  toolUseId: toolResultBlock.tool_use_id,
+                  content: contentStr,
+                  isError: toolResultBlock.is_error || false
+                });
+              } else {
+                broadcast('chat:tool-result-complete', {
+                  toolUseId: toolResultBlock.tool_use_id,
+                  content: contentStr,
+                  isError: toolResultBlock.is_error || false
+                });
+              }
               handleToolResultComplete(
                 toolResultBlock.tool_use_id,
                 contentStr,

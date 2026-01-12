@@ -1,4 +1,4 @@
-import type { AgentInput, ToolUseSimple } from '@/types/chat';
+import type { AgentInput, SubagentToolCall, ToolUseSimple } from '@/types/chat';
 
 import { CollapsibleTool } from './CollapsibleTool';
 import { ToolHeader } from './utils';
@@ -32,12 +32,55 @@ export default function TaskTool({ tool }: TaskToolProps) {
     </div>
   );
 
+  const renderSubagentCall = (call: SubagentToolCall) => {
+    const description =
+      (
+        call.parsedInput &&
+        typeof call.parsedInput === 'object' &&
+        'description' in call.parsedInput
+      ) ?
+        String(call.parsedInput.description ?? '')
+      : typeof call.input === 'object' && call.input && 'description' in call.input ?
+        String(call.input.description ?? '')
+      : '';
+    const inputText =
+      call.inputJson ?? (call.input ? JSON.stringify(call.input, null, 2) : undefined);
+    const isRunning = call.isLoading && !call.result;
+
+    return (
+      <div key={call.id} className="rounded border border-neutral-200/70 bg-white/70 p-2">
+        <div className="flex items-center gap-2 text-xs font-semibold text-neutral-700">
+          <span>{call.name}</span>
+          {isRunning && <span className="text-[10px] text-neutral-400">running</span>}
+        </div>
+        {description && <div className="mt-1 text-xs text-neutral-500">{description}</div>}
+        {inputText && (
+          <pre className="mt-2 overflow-x-auto rounded bg-neutral-100/50 px-2 py-1 font-mono text-xs break-words whitespace-pre-wrap text-neutral-600">
+            {inputText}
+          </pre>
+        )}
+        {call.result && (
+          <pre className="mt-2 overflow-x-auto rounded bg-neutral-100/50 px-2 py-1 font-mono text-xs break-words whitespace-pre-wrap text-neutral-600">
+            {call.result}
+          </pre>
+        )}
+      </div>
+    );
+  };
+
   const expandedContent = (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {input.prompt && (
         <pre className="overflow-x-auto rounded bg-neutral-100/50 px-2 py-1 font-mono text-sm break-words whitespace-pre-wrap text-neutral-600 dark:bg-neutral-950/50 dark:text-neutral-300">
           {input.prompt}
         </pre>
+      )}
+
+      {tool.subagentCalls && tool.subagentCalls.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs font-semibold text-neutral-500">Subagent tool calls</div>
+          <div className="space-y-2">{tool.subagentCalls.map(renderSubagentCall)}</div>
+        </div>
       )}
 
       {tool.result && (

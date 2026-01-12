@@ -5,6 +5,7 @@ import { basename, join, relative, resolve } from 'path';
 import {
   enqueueUserMessage,
   getAgentState,
+  getLogLines,
   getMessages,
   initializeAgent,
   interruptCurrentResponse
@@ -102,6 +103,7 @@ async function main() {
         getMessages().forEach((message) => {
           client.send('chat:message-replay', { message });
         });
+        client.send('chat:logs', { lines: getLogLines() });
         return response;
       }
 

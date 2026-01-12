@@ -90,7 +90,8 @@ export default function Message({ message, isLoading = false }: MessageProps) {
     }
     if (block.type === 'tool_use') {
       // Tool is incomplete if it doesn't have a result yet
-      return !block.tool?.result;
+      const subagentRunning = block.tool?.subagentCalls?.some((call) => call.isLoading);
+      return Boolean(block.tool?.isLoading) || Boolean(subagentRunning) || !block.tool?.result;
     }
     return false;
   });

@@ -11,10 +11,21 @@ const JSON_EVENTS = new Set([
   'chat:tool-result-start',
   'chat:tool-result-delta',
   'chat:tool-result-complete',
+  'chat:subagent-tool-use',
+  'chat:subagent-tool-input-delta',
+  'chat:subagent-tool-result-start',
+  'chat:subagent-tool-result-delta',
+  'chat:subagent-tool-result-complete',
+  'chat:logs',
   'chat:status'
 ]);
 
-const STRING_EVENTS = new Set(['chat:message-chunk', 'chat:message-error', 'chat:debug-message']);
+const STRING_EVENTS = new Set([
+  'chat:message-chunk',
+  'chat:message-error',
+  'chat:debug-message',
+  'chat:log'
+]);
 
 const NULL_EVENTS = new Set(['chat:message-complete', 'chat:message-stopped']);
 

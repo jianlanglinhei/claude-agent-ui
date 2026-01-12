@@ -2,7 +2,9 @@ type EventHandler<T> = (payload: T) => void;
 
 const listeners = new Map<string, Set<EventHandler<unknown>>>();
 const replayBuffer: Record<string, unknown[]> = {
-  'chat:message-replay': []
+  'chat:message-replay': [],
+  'chat:log': [],
+  'chat:logs': []
 };
 const replayEvents = new Set(Object.keys(replayBuffer));
 

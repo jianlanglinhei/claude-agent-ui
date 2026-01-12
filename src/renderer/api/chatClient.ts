@@ -78,5 +78,31 @@ export const chatClient = {
   onToolResultDelta: (callback: (data: ToolResultDelta) => void) =>
     onEvent('chat:tool-result-delta', callback),
   onToolResultComplete: (callback: (data: ToolResultComplete) => void) =>
-    onEvent('chat:tool-result-complete', callback)
+    onEvent('chat:tool-result-complete', callback),
+  onSubagentToolUse: (callback: (data: { parentToolUseId: string; tool: ToolUse }) => void) =>
+    onEvent('chat:subagent-tool-use', callback),
+  onSubagentToolInputDelta: (
+    callback: (data: { parentToolUseId: string; toolId: string; delta: string }) => void
+  ) => onEvent('chat:subagent-tool-input-delta', callback),
+  onSubagentToolResultStart: (
+    callback: (data: {
+      parentToolUseId: string;
+      toolUseId: string;
+      content: string;
+      isError: boolean;
+    }) => void
+  ) => onEvent('chat:subagent-tool-result-start', callback),
+  onSubagentToolResultDelta: (
+    callback: (data: { parentToolUseId: string; toolUseId: string; delta: string }) => void
+  ) => onEvent('chat:subagent-tool-result-delta', callback),
+  onSubagentToolResultComplete: (
+    callback: (data: {
+      parentToolUseId: string;
+      toolUseId: string;
+      content: string;
+      isError?: boolean;
+    }) => void
+  ) => onEvent('chat:subagent-tool-result-complete', callback),
+  onLogsSnapshot: (callback: (data: { lines: string[] }) => void) => onEvent('chat:logs', callback),
+  onLog: (callback: (line: string) => void) => onEvent('chat:log', callback)
 };

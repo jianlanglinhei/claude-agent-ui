@@ -45,6 +45,17 @@ export type ToolInput =
   | WebSearchInput
   | NotebookEditInput;
 
+export interface SubagentToolCall {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+  inputJson?: string;
+  parsedInput?: ToolInput;
+  result?: string;
+  isLoading?: boolean;
+  isError?: boolean;
+}
+
 export interface ToolUseSimple extends ToolUse {
   // Raw input as it streams in - no parsing, just accumulate the raw string
   inputJson?: string;
@@ -56,6 +67,8 @@ export interface ToolUseSimple extends ToolUse {
   isLoading?: boolean;
   // Whether tool result is an error
   isError?: boolean;
+  // Nested tool calls emitted by subagents (Task tool)
+  subagentCalls?: SubagentToolCall[];
 }
 
 export interface ContentBlock {

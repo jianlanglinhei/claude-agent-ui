@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
 import { chatClient } from '@/api/chatClient';
-import type { Message, ToolInput } from '@/types/chat';
+import type { Message, SubagentToolCall, ToolInput } from '@/types/chat';
 import type { ToolUse } from '@/types/stream';
 import { parsePartialJson } from '@/utils/parsePartialJson';
 
@@ -18,6 +18,50 @@ export function useClaudeChat(): {
   const debugMessagesRef = useRef<string[]>([]);
   const seenIdsRef = useRef<Set<string>>(new Set());
   type MessageWire = Omit<Message, 'timestamp'> & { timestamp: string };
+
+  const updateSubagentCalls = (
+    parentToolUseId: string,
+    updater: (calls: SubagentToolCall[]) => SubagentToolCall[]
+  ) => {
+    setMessages((prev) => {
+      for (let i = prev.length - 1; i >= 0; i -= 1) {
+        const message = prev[i];
+        if (message.role !== 'assistant' || typeof message.content === 'string') {
+          continue;
+        }
+        const contentArray = message.content;
+        const toolIndex = contentArray.findIndex(
+          (block) => block.type === 'tool_use' && block.tool?.id === parentToolUseId
+        );
+        if (toolIndex === -1) {
+          continue;
+        }
+        const toolBlock = contentArray[toolIndex];
+        if (toolBlock.type !== 'tool_use' || !toolBlock.tool) {
+          continue;
+        }
+        const existingCalls = toolBlock.tool.subagentCalls ?? [];
+        const nextCalls = updater(existingCalls);
+        const updatedContent = [...contentArray];
+        updatedContent[toolIndex] = {
+          ...toolBlock,
+          tool: {
+            ...toolBlock.tool,
+            subagentCalls: nextCalls
+          }
+        };
+        return [
+          ...prev.slice(0, i),
+          {
+            ...message,
+            content: updatedContent
+          },
+          ...prev.slice(i + 1)
+        ];
+      }
+      return prev;
+    });
+  };
 
   useEffect(() => {
     const unsubscribeInit = chatClient.onInit(() => {
@@ -194,7 +238,8 @@ export function useClaudeChat(): {
           tool: {
             ...tool,
             // Don't stringify tool.input here - it gets built up via deltas
-            inputJson: ''
+            inputJson: '',
+            isLoading: true
           }
         };
 
@@ -395,7 +440,8 @@ export function useClaudeChat(): {
                   tool: {
                     ...toolBlock.tool,
                     result: data.content,
-                    isError: data.isError
+                    isError: data.isError,
+                    isLoading: true
                   }
                 };
 
@@ -437,7 +483,8 @@ export function useClaudeChat(): {
                   ...toolBlock,
                   tool: {
                     ...toolBlock.tool,
-                    result: (toolBlock.tool.result || '') + data.delta
+                    result: (toolBlock.tool.result || '') + data.delta,
+                    isLoading: true
                   }
                 };
 
@@ -480,7 +527,8 @@ export function useClaudeChat(): {
                   tool: {
                     ...toolBlock.tool,
                     result: data.content,
-                    isError: data.isError
+                    isError: data.isError,
+                    isLoading: false
                   }
                 };
 
@@ -496,6 +544,112 @@ export function useClaudeChat(): {
           }
           return prev;
         });
+      }
+    );
+
+    const unsubscribeSubagentToolUse = chatClient.onSubagentToolUse(
+      (data: { parentToolUseId: string; tool: ToolUse }) => {
+        updateSubagentCalls(data.parentToolUseId, (calls) => {
+          const existing = calls.find((call) => call.id === data.tool.id);
+          const inputJson = JSON.stringify(data.tool.input ?? {}, null, 2);
+          if (existing) {
+            return calls.map((call) =>
+              call.id === data.tool.id ?
+                {
+                  ...call,
+                  name: data.tool.name,
+                  input: data.tool.input ?? {},
+                  inputJson,
+                  isLoading: true
+                }
+              : call
+            );
+          }
+          return [
+            ...calls,
+            {
+              id: data.tool.id,
+              name: data.tool.name,
+              input: data.tool.input ?? {},
+              inputJson,
+              isLoading: true
+            }
+          ];
+        });
+      }
+    );
+
+    const unsubscribeSubagentToolInputDelta = chatClient.onSubagentToolInputDelta(
+      (data: { parentToolUseId: string; toolId: string; delta: string }) => {
+        updateSubagentCalls(data.parentToolUseId, (calls) =>
+          calls.map((call) => {
+            if (call.id !== data.toolId) {
+              return call;
+            }
+            const nextInputJson = `${call.inputJson ?? ''}${data.delta}`;
+            const parsedInput = parsePartialJson<ToolInput>(nextInputJson);
+            return {
+              ...call,
+              inputJson: nextInputJson,
+              parsedInput: parsedInput ?? call.parsedInput
+            };
+          })
+        );
+      }
+    );
+
+    const unsubscribeSubagentToolResultStart = chatClient.onSubagentToolResultStart(
+      (data: { parentToolUseId: string; toolUseId: string; content: string; isError: boolean }) => {
+        updateSubagentCalls(data.parentToolUseId, (calls) =>
+          calls.map((call) =>
+            call.id === data.toolUseId ?
+              {
+                ...call,
+                result: data.content,
+                isError: data.isError,
+                isLoading: true
+              }
+            : call
+          )
+        );
+      }
+    );
+
+    const unsubscribeSubagentToolResultDelta = chatClient.onSubagentToolResultDelta(
+      (data: { parentToolUseId: string; toolUseId: string; delta: string }) => {
+        updateSubagentCalls(data.parentToolUseId, (calls) =>
+          calls.map((call) =>
+            call.id === data.toolUseId ?
+              {
+                ...call,
+                result: `${call.result ?? ''}${data.delta}`,
+                isLoading: true
+              }
+            : call
+          )
+        );
+      }
+    );
+
+    const unsubscribeSubagentToolResultComplete = chatClient.onSubagentToolResultComplete(
+      (data: {
+        parentToolUseId: string;
+        toolUseId: string;
+        content: string;
+        isError?: boolean;
+      }) => {
+        updateSubagentCalls(data.parentToolUseId, (calls) =>
+          calls.map((call) =>
+            call.id === data.toolUseId ?
+              {
+                ...call,
+                result: data.content,
+                isError: data.isError,
+                isLoading: false
+              }
+            : call
+          )
+        );
       }
     );
 
@@ -701,6 +855,11 @@ export function useClaudeChat(): {
       unsubscribeToolResultStart();
       unsubscribeToolResultDelta();
       unsubscribeToolResultComplete();
+      unsubscribeSubagentToolUse();
+      unsubscribeSubagentToolInputDelta();
+      unsubscribeSubagentToolResultStart();
+      unsubscribeSubagentToolResultDelta();
+      unsubscribeSubagentToolResultComplete();
       unsubscribeMessageComplete();
       unsubscribeMessageStopped();
       unsubscribeMessageError();

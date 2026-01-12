@@ -71,7 +71,11 @@ function ToolBadge({ tool, isExpanded, onToggle }: ToolBadgeProps) {
 
   const config = getToolBadgeConfig(tool.name);
   const label = getToolLabel(tool);
-  const hasDetails = tool.result || tool.inputJson || tool.parsedInput;
+  const hasDetails =
+    tool.result ||
+    tool.inputJson ||
+    tool.parsedInput ||
+    (tool.subagentCalls && tool.subagentCalls.length > 0);
 
   return (
     <button
@@ -110,7 +114,13 @@ export default function BlockGroup({
       return block.thinking ? block.thinking.trim().length > 0 : false;
     }
     if (block.type === 'tool_use') {
-      return block.tool?.result || block.tool?.inputJson || block.tool?.parsedInput || false;
+      return (
+        block.tool?.result ||
+        block.tool?.inputJson ||
+        block.tool?.parsedInput ||
+        (block.tool?.subagentCalls && block.tool.subagentCalls.length > 0) ||
+        false
+      );
     }
     return false;
   });
