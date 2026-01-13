@@ -53,32 +53,43 @@ export default function Chat({ agentDir, sessionState }: ChatProps) {
   };
 
   return (
-    <div className="flex h-screen bg-white text-neutral-900">
-      <div className="flex w-3/4 flex-col border-r border-neutral-200">
-        <div className="flex items-center justify-between px-6 py-4">
+    <div className="page-enter flex min-h-screen flex-col bg-[var(--paper)] text-[var(--ink)] lg:flex-row">
+      <div className="flex w-full flex-1 flex-col border-b border-[var(--line)] bg-[var(--paper-strong)]/70 backdrop-blur lg:w-3/4 lg:border-r lg:border-b-0">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div>
-            <div className="text-sm font-semibold text-neutral-700">Agent</div>
-            <div className="text-xs text-neutral-500">Status: {sessionState}</div>
+            <div className="text-[10px] font-semibold tracking-[0.4em] text-[var(--ink-muted)] uppercase">
+              Agent
+            </div>
+            <div className="mt-2 flex items-center gap-3">
+              <div className="font-display text-xl text-[var(--ink)]">Session</div>
+              <span className="rounded-full border border-[var(--line)] bg-[var(--paper-contrast)] px-3 py-1 text-[11px] font-semibold text-[var(--ink-muted)]">
+                Status: {sessionState}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-3 text-xs text-neutral-400">
+          <div className="flex items-center gap-3 text-[11px] text-[var(--ink-muted)]">
             <button
               type="button"
               onClick={() => setShowLogs((prev) => !prev)}
-              className="rounded border border-neutral-200 px-2 py-1 text-[11px] font-medium text-neutral-600 transition hover:border-neutral-300 hover:text-neutral-800"
+              className="rounded-full border border-[var(--line)] bg-[var(--paper-strong)] px-3 py-1 font-semibold text-[var(--ink)] transition hover:-translate-y-[1px] hover:border-[var(--line-strong)]"
             >
               {showLogs ? 'Hide logs' : 'Logs'}
             </button>
-            <span>Single session</span>
+            <span className="rounded-full border border-[var(--line)] bg-[var(--paper-contrast)] px-3 py-1">
+              Single session
+            </span>
           </div>
         </div>
 
         <div className="flex flex-1 flex-col overflow-hidden">
           {showLogs && (
-            <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
-              <div className="mb-2 text-xs font-semibold text-neutral-600">Agent SDK Logs</div>
-              <div className="max-h-52 overflow-y-auto rounded border border-neutral-200 bg-white p-2 font-mono text-[11px] leading-relaxed text-neutral-700">
+            <div className="border-b border-[var(--line)] bg-[var(--paper-contrast)]/70 px-4 py-3">
+              <div className="mb-2 text-[11px] font-semibold tracking-[0.2em] text-[var(--ink-muted)] uppercase">
+                Agent SDK Logs
+              </div>
+              <div className="max-h-52 overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--paper-strong)] p-3 font-mono text-[11px] leading-relaxed text-[var(--ink)] shadow-[var(--shadow-soft)]">
                 {logs.length === 0 ?
-                  <div className="text-neutral-400">No logs yet.</div>
+                  <div className="text-[var(--ink-muted)]">No logs yet.</div>
                 : logs.map((line, index) => (
                     <div key={`${index}-${line.slice(0, 12)}`} className="whitespace-pre-wrap">
                       {line}
@@ -103,7 +114,7 @@ export default function Chat({ agentDir, sessionState }: ChatProps) {
         </div>
       </div>
 
-      <div className="flex w-1/4 flex-col">
+      <div className="flex w-full flex-col lg:w-1/4">
         <DirectoryPanel agentDir={agentDir} />
       </div>
     </div>

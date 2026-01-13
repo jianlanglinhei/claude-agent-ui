@@ -2,10 +2,80 @@
 
 @plugin '@tailwindcss/typography';
 
+:root {
+  --font-display: 'Optima', 'Palatino', 'Book Antiqua', serif;
+  --font-body: 'Avenir Next', 'Gill Sans', 'Trebuchet MS', sans-serif;
+  --font-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Roboto Mono', monospace;
+  --ink: #1c1612;
+  --ink-muted: #6f6156;
+  --paper: #f6efe5;
+  --paper-strong: #fdf8f1;
+  --paper-contrast: #efe6d9;
+  --accent: #c26d3a;
+  --accent-strong: #e18a58;
+  --accent-cool: #2e6f5e;
+  --line: rgb(28 22 18 / 0.12);
+  --line-strong: rgb(28 22 18 / 0.2);
+  --shadow-soft: 0 18px 40px -32px rgb(24 18 14 / 0.45);
+  --shadow-strong: 0 40px 70px -50px rgb(24 18 14 / 0.55), 0 16px 30px -24px rgb(24 18 14 / 0.4);
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 700px at 82% -10%, #f2d7c4 0%, transparent 55%),
+    radial-gradient(900px 600px at -10% 110%, #d6e5df 0%, transparent 55%),
+    linear-gradient(120deg, rgb(255 255 255 / 0.6), rgb(255 255 255 / 0)), var(--paper);
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgb(28 22 18 / 0.08) 0.7px, transparent 0.7px);
+  background-size: 3px 3px;
+  opacity: 0.22;
+  mix-blend-mode: multiply;
+  z-index: 0;
+}
+
+#root {
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.glass-panel {
+  border: 1px solid var(--line);
+  background: rgb(253 248 241 / 0.78);
+  box-shadow: var(--shadow-strong);
+  border-radius: 28px;
+  backdrop-filter: blur(18px);
+}
+
+.soft-panel {
+  border: 1px solid var(--line);
+  background: var(--paper-strong);
+  box-shadow: var(--shadow-soft);
+  border-radius: 22px;
+}
+
+.ink-muted {
+  color: var(--ink-muted);
+}
+
 /* Custom scrollbar styling for a cleaner look */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(115 115 115 / 0.3) transparent;
+  scrollbar-color: rgb(162 120 90 / 0.35) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -18,27 +88,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: rgb(115 115 115 / 0.3);
+  background-color: rgb(162 120 90 / 0.35);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgb(115 115 115 / 0.5);
-}
-
-/* Dark mode scrollbar */
-@media (prefers-color-scheme: dark) {
-  * {
-    scrollbar-color: rgb(163 163 163 / 0.3) transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background-color: rgb(163 163 163 / 0.3);
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background-color: rgb(163 163 163 / 0.5);
-  }
+  background-color: rgb(162 120 90 / 0.6);
 }
 
 /* Shimmer animation for thinking state */
@@ -58,9 +113,24 @@
   animation: shimmer 2s ease-in-out infinite;
 }
 
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.page-enter {
+  animation: rise 0.6s ease-out;
+}
+
 /* Terminal-like monospace typography for tool calls */
 .tool-input {
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Roboto Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.6;
   letter-spacing: -0.01em;
@@ -73,7 +143,7 @@
 
 /* Clean code block styling */
 pre code {
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Roboto Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.6;
   letter-spacing: -0.01em;
@@ -82,39 +152,18 @@ pre code {
 /* Tool container styling to mirror drawer cards */
 .tool-container {
   border-radius: 1rem;
-  border: 1px solid rgb(23 23 23 / 0.08);
-  background: rgb(255 255 255 / 0.95);
+  border: 1px solid var(--line);
+  background: rgb(253 248 241 / 0.85);
   padding: 0.75rem 1rem;
-  box-shadow:
-    0 4px 12px rgb(15 23 42 / 0.02),
-    0 1px 2px rgb(15 23 42 / 0.02);
+  box-shadow: 0 8px 24px -20px rgb(24 18 14 / 0.35);
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
 }
 
 .tool-container:hover {
-  border-color: rgb(23 23 23 / 0.2);
-  box-shadow:
-    0 6px 16px rgb(15 23 42 / 0.04),
-    0 1px 4px rgb(15 23 42 / 0.04);
-}
-
-@media (prefers-color-scheme: dark) {
-  .tool-container {
-    border-color: rgb(82 82 82 / 0.8);
-    background: rgb(9 9 11 / 0.9);
-    box-shadow:
-      0 8px 16px rgb(0 0 0 / 0.25),
-      0 2px 4px rgb(0 0 0 / 0.2);
-  }
-
-  .tool-container:hover {
-    border-color: rgb(163 163 163 / 0.4);
-    box-shadow:
-      0 10px 20px rgb(0 0 0 / 0.3),
-      0 3px 6px rgb(0 0 0 / 0.25);
-  }
+  border-color: var(--line-strong);
+  box-shadow: 0 14px 30px -24px rgb(24 18 14 / 0.45);
 }
 
 /* Create border with gaps for icons in expanded sections */
@@ -122,34 +171,22 @@ pre code {
   position: relative;
   background-image: linear-gradient(
     to bottom,
-    rgb(229 229 229 / 0.3) 0%,
-    rgb(229 229 229 / 0.3) 100%
+    rgb(134 112 98 / 0.25) 0%,
+    rgb(134 112 98 / 0.25) 100%
   );
   background-size: 1px 100%;
   background-position: 0 0;
   background-repeat: repeat-y;
 }
 
-@media (prefers-color-scheme: dark) {
-  .expanded-block-section {
-    background-image: linear-gradient(to bottom, rgb(64 64 64 / 0.3) 0%, rgb(64 64 64 / 0.3) 100%);
-  }
-}
-
 /* Align tool call icons with border center and create gap */
 .expanded-block-section .flex.h-4.w-4.items-center.justify-center {
   position: relative;
   margin-left: -18.5px;
-  background-color: rgb(255 255 255);
+  background-color: var(--paper-strong);
   z-index: 1;
   padding: 3px 2px;
   border-radius: 2px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .expanded-block-section .flex.h-4.w-4.items-center.justify-center {
-    background-color: rgb(23 23 23);
-  }
 }
 
 /* Align thinking badge icon with border center and create gap */
@@ -172,15 +209,9 @@ pre code {
   top: 50%;
   transform: translateY(-50%);
   height: 18px;
-  background-color: rgb(255 255 255);
+  background-color: var(--paper-strong);
   border-radius: 2px;
   z-index: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .expanded-block-section .flex.items-center.gap-1\.5::before {
-    background-color: rgb(23 23 23);
-  }
 }
 
 /* Remove extra indent and border from expanded tool calls and thinking blocks */

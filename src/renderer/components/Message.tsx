@@ -27,9 +27,9 @@ export default function Message({ message, isLoading = false }: MessageProps) {
 
     return (
       <div className="flex justify-end px-1">
-        <article className="relative max-w-[min(34rem,calc(100%-2rem))] rounded-2xl border border-neutral-200/70 bg-white px-3 py-2 text-base leading-relaxed text-neutral-900 shadow-sm shadow-black/5 dark:border-neutral-800/60 dark:bg-neutral-900/70 dark:text-neutral-50 dark:shadow-black/30">
+        <article className="relative max-w-[min(34rem,calc(100%-2rem))] rounded-2xl border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-3 text-base leading-relaxed text-[var(--ink)] shadow-[var(--shadow-soft)]">
           {hasText && (
-            <div className="prose prose-base max-w-none prose-neutral dark:prose-invert">
+            <div className="prose prose-base max-w-none prose-neutral">
               <Markdown>{userContent}</Markdown>
             </div>
           )}
@@ -48,8 +48,10 @@ export default function Message({ message, isLoading = false }: MessageProps) {
     return (
       <div className="flex justify-start">
         <article className="w-full px-3 py-2">
-          <div className="prose prose-base max-w-none text-base leading-relaxed prose-neutral dark:prose-invert">
-            <Markdown>{message.content}</Markdown>
+          <div className="rounded-2xl border border-[var(--line)]/60 bg-[var(--paper-strong)]/70 px-4 py-3 shadow-[var(--shadow-soft)]">
+            <div className="prose prose-base max-w-none text-base leading-relaxed prose-neutral">
+              <Markdown>{message.content}</Markdown>
+            </div>
           </div>
         </article>
       </div>
@@ -109,9 +111,11 @@ export default function Message({ message, isLoading = false }: MessageProps) {
                 return (
                   <div
                     key={index}
-                    className="prose prose-base max-w-none text-base leading-relaxed prose-neutral dark:prose-invert"
+                    className="rounded-2xl border border-[var(--line)]/60 bg-[var(--paper-strong)]/70 px-4 py-3 shadow-[var(--shadow-soft)]"
                   >
-                    <Markdown>{item.text}</Markdown>
+                    <div className="prose prose-base max-w-none text-base leading-relaxed prose-neutral">
+                      <Markdown>{item.text}</Markdown>
+                    </div>
                   </div>
                 );
               }

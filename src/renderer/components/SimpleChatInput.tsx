@@ -29,8 +29,8 @@ export default function SimpleChatInput({
   };
 
   return (
-    <div className="border-t border-neutral-200 bg-white px-6 py-4">
-      <div className="flex items-end gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
+    <div className="border-t border-[var(--line)] bg-[var(--paper-strong)]/70 px-6 py-4 backdrop-blur">
+      <div className="flex items-end gap-3 rounded-2xl border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-3 shadow-[var(--shadow-soft)]">
         <textarea
           ref={textareaRef}
           value={value}
@@ -38,13 +38,13 @@ export default function SimpleChatInput({
           onKeyDown={handleKeyDown}
           rows={1}
           placeholder="Type a message. Enter to send, Shift+Enter for a new line."
-          className="min-h-[44px] w-full resize-none bg-transparent text-sm text-neutral-900 outline-none placeholder:text-neutral-400"
+          className="min-h-[44px] w-full resize-none bg-transparent text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]"
         />
         <button
           type="button"
           onClick={onSend}
           disabled={isLoading || !value.trim()}
-          className="rounded-full bg-neutral-900 px-4 py-2 text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-neutral-300"
+          className="rounded-full bg-[var(--ink)] px-5 py-2 text-[11px] font-semibold tracking-[0.2em] text-[var(--paper-strong)] uppercase transition hover:-translate-y-[1px] hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:bg-[var(--paper-contrast)] disabled:text-[var(--ink-muted)]"
         >
           Send
         </button>

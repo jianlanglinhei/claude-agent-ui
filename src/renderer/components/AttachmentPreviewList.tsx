@@ -55,7 +55,7 @@ export default function AttachmentPreviewList({
         return (
           <div
             key={attachment.id}
-            className={`relative rounded-2xl border border-neutral-200/80 bg-neutral-50 shadow-sm dark:border-neutral-700/60 dark:bg-neutral-800/40 ${cardClassName}`}
+            className={`relative rounded-2xl border border-[var(--line)] bg-[var(--paper-strong)] shadow-[var(--shadow-soft)] ${cardClassName}`}
           >
             {showImagePreview ?
               <div className={`relative overflow-hidden rounded-2xl ${imageDimensions}`}>
@@ -66,25 +66,25 @@ export default function AttachmentPreviewList({
                   onError={() => markPreviewError(attachment.id)}
                   loading="lazy"
                 />
-                <div className="absolute inset-x-1 bottom-1 rounded-md bg-neutral-900/70 px-1 py-0.5 text-[10px] font-medium text-white/90">
+                <div className="absolute inset-x-1 bottom-1 rounded-md bg-[var(--ink)]/70 px-1 py-0.5 text-[10px] font-medium text-[var(--paper-strong)]">
                   <span className="block truncate">{attachment.name}</span>
                 </div>
               </div>
             : <div className="flex min-w-[14rem] items-center gap-3 px-3 py-2">
-                <div className="rounded-full bg-neutral-200 p-2 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-200">
+                <div className="rounded-full bg-[var(--paper-contrast)] p-2 text-[var(--ink)]">
                   <Paperclip className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-medium text-neutral-900 dark:text-neutral-100">
+                  <p className="truncate text-xs font-medium text-[var(--ink)]">
                     {attachment.name}
                   </p>
-                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                  <p className="text-[11px] text-[var(--ink-muted)]">
                     {formatFileSize(attachment.size)}
                   </p>
                   {attachment.footnoteLines?.map((line, index) => (
                     <p
                       key={`${attachment.id}-footnote-${index}`}
-                      className="text-[11px] text-neutral-500 dark:text-neutral-400"
+                      className="text-[11px] text-[var(--ink-muted)]"
                     >
                       {line}
                     </p>
@@ -97,7 +97,7 @@ export default function AttachmentPreviewList({
                 type="button"
                 aria-label={`Remove ${attachment.name}`}
                 onClick={() => handleRemove(attachment.id)}
-                className="absolute top-1.5 right-1.5 rounded-full bg-white/90 p-1 text-neutral-600 shadow-sm transition hover:bg-white dark:bg-neutral-900/80 dark:text-neutral-200"
+                className="absolute top-1.5 right-1.5 rounded-full bg-[var(--paper-strong)]/95 p-1 text-[var(--ink)] shadow-sm transition hover:bg-[var(--paper-strong)]"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
