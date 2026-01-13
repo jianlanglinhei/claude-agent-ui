@@ -69,7 +69,7 @@ export default function Start({ onStarted }: StartProps) {
         </div>
 
         <div className="lg:w-7/12">
-          <div className="glass-panel relative overflow-hidden p-6 sm:p-8">
+          <div className="glass-panel relative overflow-visible p-6 sm:p-8">
             <div className="absolute -top-3 left-6 rounded-full border border-[var(--line)] bg-[var(--paper-strong)] px-3 py-1 text-[10px] font-semibold tracking-[0.2em] text-[var(--ink-muted)] uppercase shadow-[var(--shadow-soft)]">
               Session
             </div>

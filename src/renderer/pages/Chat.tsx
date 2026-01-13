@@ -5,9 +5,11 @@ import { chatClient } from '@/api/chatClient';
 import DirectoryPanel from '@/components/DirectoryPanel';
 import MessageList from '@/components/MessageList';
 import SimpleChatInput from '@/components/SimpleChatInput';
+import SystemInfoPanel from '@/components/SystemInfoPanel';
 import { useAgentLogs } from '@/hooks/useAgentLogs';
 import { useAutoScroll } from '@/hooks/useAutoScroll';
 import { useClaudeChat } from '@/hooks/useClaudeChat';
+import { useSystemInit } from '@/hooks/useSystemInit';
 
 interface ChatProps {
   agentDir: string;
@@ -18,8 +20,10 @@ export default function Chat({ agentDir, sessionState }: ChatProps) {
   const [inputValue, setInputValue] = useState('');
   const [showLogs, setShowLogs] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
+  const [showSystemInfo, setShowSystemInfo] = useState(false);
   const { messages, setMessages, isLoading, setIsLoading } = useClaudeChat();
   const logs = useAgentLogs();
+  const systemInitInfo = useSystemInit();
   const messagesContainerRef = useAutoScroll(isLoading, messages);
 
   useEffect(() => {
@@ -91,9 +95,13 @@ export default function Chat({ agentDir, sessionState }: ChatProps) {
             >
               {showLogs ? 'Hide logs' : 'Logs'}
             </button>
-            <span className="rounded-full border border-[var(--line)] bg-[var(--paper-contrast)] px-3 py-1">
-              Single session
-            </span>
+            <button
+              type="button"
+              onClick={() => setShowSystemInfo(true)}
+              className="action-button px-3 py-1 font-semibold"
+            >
+              System Info
+            </button>
           </div>
         </div>
 
@@ -151,6 +159,30 @@ export default function Chat({ agentDir, sessionState }: ChatProps) {
       <div className="flex w-full flex-col lg:w-1/4">
         <DirectoryPanel agentDir={agentDir} />
       </div>
+      {showSystemInfo && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 px-4 py-6 backdrop-blur-sm">
+          <div className="glass-panel w-full max-w-3xl">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] px-5 py-4">
+              <div>
+                <div className="text-[13px] font-semibold text-[var(--ink)]">System Info</div>
+                <div className="text-[11px] text-[var(--ink-muted)]">
+                  Init details for the current session.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSystemInfo(false)}
+                className="action-button px-3 py-1 text-[11px] font-semibold"
+              >
+                Close
+              </button>
+            </div>
+            <div className="px-5 py-4">
+              <SystemInfoPanel info={systemInitInfo} showHeader={false} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

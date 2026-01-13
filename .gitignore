@@ -31,3 +31,6 @@ resources/uv.tar.gz
 resources/PortableGit.7z.exe
 resources/msys2.sfx.exe
 resources/msys2.tar.zst
+
+settings.json
+logs/

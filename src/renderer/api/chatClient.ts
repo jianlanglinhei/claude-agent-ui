@@ -11,6 +11,7 @@ import type {
 } from '@/types/stream';
 
 import type { SendMessagePayload, SendMessageResponse } from '../../shared/types/ipc';
+import type { SystemInitInfo } from '../../shared/types/system';
 import { onEvent } from './eventBus';
 
 export type ChatInitPayload = {
@@ -44,6 +45,10 @@ export type ChatStatusPayload = {
 
 export type ChatAgentErrorPayload = {
   message: string;
+};
+
+export type ChatSystemInitPayload = {
+  info: SystemInitInfo;
 };
 
 async function postJson<T>(path: string, body?: unknown): Promise<T> {
@@ -110,5 +115,7 @@ export const chatClient = {
   onLogsSnapshot: (callback: (data: { lines: string[] }) => void) => onEvent('chat:logs', callback),
   onLog: (callback: (line: string) => void) => onEvent('chat:log', callback),
   onAgentError: (callback: (payload: ChatAgentErrorPayload) => void) =>
-    onEvent('chat:agent-error', callback)
+    onEvent('chat:agent-error', callback),
+  onSystemInit: (callback: (payload: ChatSystemInitPayload) => void) =>
+    onEvent('chat:system-init', callback)
 };

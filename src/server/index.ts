@@ -7,6 +7,7 @@ import {
   getAgentState,
   getLogLines,
   getMessages,
+  getSystemInitInfo,
   initializeAgent,
   interruptCurrentResponse
 } from './agent-session';
@@ -155,6 +156,10 @@ async function main() {
           client.send('chat:message-replay', { message });
         });
         client.send('chat:logs', { lines: getLogLines() });
+        const systemInitInfo = getSystemInitInfo();
+        if (systemInitInfo) {
+          client.send('chat:system-init', { info: systemInitInfo });
+        }
         return response;
       }
 

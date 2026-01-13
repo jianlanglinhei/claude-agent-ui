@@ -5,6 +5,7 @@ import { query, type Query, type SDKUserMessage } from '@anthropic-ai/claude-age
 
 import type { ToolInput } from '../renderer/types/chat';
 import { parsePartialJson } from '../renderer/utils/parsePartialJson';
+import type { SystemInitInfo } from '../shared/types/system';
 import { broadcast } from './sse';
 
 type SessionState = 'idle' | 'running' | 'error';
@@ -64,18 +65,6 @@ export type MessageWire = {
 
 const requireModule = createRequire(import.meta.url);
 
-const FAST_MODEL_ID = 'claude-haiku-4-5-20251001';
-
-const SYSTEM_PROMPT_APPEND = `**Workspace Context:**
-This is a multi-purpose workspace for diverse projects, scripts, and workflows—not a single monolithic codebase. Each subdirectory may represent different applications or tasks. Always understand context before making assumptions about project structure.
-
-**Tooling preferences:**
-- JavaScript/TypeScript: Use bun (not node/npm/npx).
-- Python: Use uv (not python/pip/conda). Write scripts to files (e.g., temp.py) instead of inline -c commands and run with uv run --with <deps> script.py.
-
-**Memory:**
-Maintain \`CLAUDE.md\` in the workspace root as your persistent memory. Update continuously (not just when asked) with: database schemas, project patterns, code snippets, user preferences, and anything useful for future tasks.`;
-
 let agentDir = '';
 let hasInitialPrompt = false;
 let sessionState: SessionState = 'idle';
@@ -94,6 +83,7 @@ let sessionId = randomUUID();
 let logStream: ReturnType<typeof createWriteStream> | null = null;
 let logFilePath = '';
 const logLines: string[] = [];
+let systemInitInfo: SystemInitInfo | null = null;
 type MessageQueueItem = {
   message: SDKUserMessage['message'];
   resolve: () => void;
@@ -121,6 +111,58 @@ function resolveClaudeCodeCli(): string {
 
 function buildClaudeSessionEnv(): NodeJS.ProcessEnv {
   return { ...process.env };
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function safeStringify(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function asStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  return value.map((item) => safeStringify(item));
+}
+
+function parseSystemInitInfo(message: unknown): SystemInitInfo | null {
+  if (!message || typeof message !== 'object') {
+    return null;
+  }
+  const record = message as Record<string, unknown>;
+  if (record.type !== 'system' || record.subtype !== 'init') {
+    return null;
+  }
+
+  return {
+    timestamp: new Date().toISOString(),
+    type: asString(record.type),
+    subtype: asString(record.subtype),
+    cwd: asString(record.cwd),
+    session_id: asString(record.session_id),
+    tools: asStringArray(record.tools),
+    mcp_servers: asStringArray(record.mcp_servers),
+    model: asString(record.model),
+    permissionMode: asString(record.permissionMode),
+    slash_commands: asStringArray(record.slash_commands),
+    apiKeySource: asString(record.apiKeySource),
+    claude_code_version: asString(record.claude_code_version),
+    output_style: asString(record.output_style),
+    agents: asStringArray(record.agents),
+    skills: asStringArray(record.skills),
+    plugins: asStringArray(record.plugins),
+    uuid: asString(record.uuid)
+  };
 }
 
 function setSessionState(nextState: SessionState): void {
@@ -663,6 +705,10 @@ export function getAgentState(): {
   return { agentDir, sessionState, hasInitialPrompt };
 }
 
+export function getSystemInitInfo(): SystemInitInfo | null {
+  return systemInitInfo;
+}
+
 export function getLogLines(): string[] {
   return logLines;
 }
@@ -674,6 +720,7 @@ export function getMessages(): MessageWire[] {
 export function initializeAgent(nextAgentDir: string, initialPrompt?: string | null): void {
   agentDir = nextAgentDir;
   hasInitialPrompt = Boolean(initialPrompt && initialPrompt.trim());
+  systemInitInfo = null;
   messageSequence = 0;
   sessionId = randomUUID();
   messages.length = 0;
@@ -771,11 +818,9 @@ async function startStreamingSession(): Promise<void> {
     querySession = query({
       prompt: messageGenerator(),
       options: {
-        model: FAST_MODEL_ID,
         maxThinkingTokens: 32_000,
         settingSources: ['project'],
-        permissionMode: 'acceptEdits',
-        allowedTools: ['Bash', 'WebFetch', 'WebSearch', 'Skill'],
+        permissionMode: 'bypassPermissions',
         pathToClaudeCodeExecutable: resolveClaudeCodeCli(),
         executable: 'bun',
         env,
@@ -786,8 +831,7 @@ async function startStreamingSession(): Promise<void> {
         },
         systemPrompt: {
           type: 'preset',
-          preset: 'claude_code',
-          append: SYSTEM_PROMPT_APPEND
+          preset: 'claude_code'
         },
         cwd: agentDir,
         includePartialMessages: true
@@ -802,6 +846,11 @@ async function startStreamingSession(): Promise<void> {
         appendLogLine(line);
       } catch (error) {
         console.log('[agent][sdk] (unserializable)', error);
+      }
+      const nextSystemInit = parseSystemInitInfo(sdkMessage);
+      if (nextSystemInit) {
+        systemInitInfo = nextSystemInit;
+        broadcast('chat:system-init', { info: systemInitInfo });
       }
       const agentError = extractAgentError(sdkMessage);
       if (agentError) {

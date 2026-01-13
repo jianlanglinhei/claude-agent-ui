@@ -16,6 +16,7 @@ const JSON_EVENTS = new Set([
   'chat:subagent-tool-result-start',
   'chat:subagent-tool-result-delta',
   'chat:subagent-tool-result-complete',
+  'chat:system-init',
   'chat:logs',
   'chat:status',
   'chat:agent-error'

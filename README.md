@@ -28,4 +28,19 @@ bun run dev:web    # Start Vite dev server for Web UI
 bun run build:web  # Build Web UI into dist/
 bun run start      # Build Web UI and start server (single port)
 bun run dev:single # Build Web UI in watch mode and start server (single port)
+
+bun run start -- --agent-dir $(pwd)/agent
+```
+
+## Docker
+
+```bash
+docker build -t claude-agent-ui .
+# modify the api key and base url in settings.json
+cp agent/.claude/settings.json.tpl agent/.claude/settings.json
+
+docker run --rm -p 8000:8000 \
+    -v $(pwd)/agent:/home/node/claude-agent-ui/agent \
+    -v $(pwd)/agent/.claude/settings.json:/home/node/claude-agent-ui/agent/.claude/settings.json \
+    claude-agent-ui
 ```
