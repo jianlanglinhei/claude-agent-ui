@@ -1,3 +1,4 @@
+import { ArrowUp } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 interface SimpleChatInputProps {
@@ -30,23 +31,23 @@ export default function SimpleChatInput({
 
   return (
     <div className="border-t border-[var(--line)] bg-[var(--paper-strong)]/70 px-6 py-4 backdrop-blur">
-      <div className="flex items-end gap-3 rounded-2xl border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-3 shadow-[var(--shadow-soft)]">
+      <div className="mx-auto flex max-w-3xl items-end gap-3 rounded-2xl border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-3 shadow-[var(--shadow-soft)]">
         <textarea
           ref={textareaRef}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
           rows={1}
-          placeholder="Type a message. Enter to send, Shift+Enter for a new line."
+          placeholder="输入bug，解决 bug"
           className="min-h-[44px] w-full resize-none bg-transparent text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]"
         />
         <button
           type="button"
           onClick={onSend}
           disabled={isLoading || !value.trim()}
-          className="action-button bg-[var(--ink)] px-5 py-2 text-[11px] font-semibold tracking-[0.2em] text-[var(--paper-strong)] uppercase hover:bg-[var(--accent)]"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--paper-strong)] transition-colors hover:bg-[var(--accent)] disabled:bg-[var(--ink-muted)] disabled:cursor-not-allowed"
         >
-          Send
+          <ArrowUp className="h-4 w-4" />
         </button>
       </div>
     </div>

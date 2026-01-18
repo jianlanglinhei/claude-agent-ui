@@ -46,7 +46,7 @@ export default function Start({ onStarted }: StartProps) {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 lg:flex-row lg:items-center">
         <div className="lg:w-5/12">
           <div className="text-[10px] font-semibold tracking-[0.4em] text-[var(--ink-muted)] uppercase">
-            Agent
+            Autofix
           </div>
           <h1 className="font-display mt-4 text-3xl leading-tight text-[var(--ink)] sm:text-4xl">
             Start a focused run with a single, clear prompt.

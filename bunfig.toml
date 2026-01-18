@@ -1,0 +1,6 @@
+[install]
+# Configure registry
+registry = "https://registry.npmmirror.com"
+
+# Cache directory
+cache = true

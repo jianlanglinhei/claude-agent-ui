@@ -837,7 +837,8 @@ async function startStreamingSession(): Promise<void> {
           preset: 'claude_code'
         },
         cwd: agentDir,
-        includePartialMessages: true
+        includePartialMessages: true,
+        allowDangerouslySkipPermissions: true
       }
     });
 
