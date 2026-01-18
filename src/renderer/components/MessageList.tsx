@@ -13,7 +13,7 @@ interface MessageListProps {
   bottomPadding?: number;
 }
 
-const containerClasses = 'flex-1 overflow-y-auto px-3 py-3';
+const containerClasses = 'h-full overflow-y-auto px-3 py-3';
 
 export default function MessageList({
   messages,
