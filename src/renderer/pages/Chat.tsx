@@ -120,7 +120,7 @@ export default function Chat({ agentDir, sessionState }: ChatProps) {
         <div className="flex flex-1 flex-col">
           <div className="flex-1 overflow-hidden">
             {agentError && (
-              <div className="border-b border-[var(--line)] bg-[#f5e4d9]/80 px-4 py-3 text-[11px] text-[var(--ink)]">
+              <div className="border-b border-[var(--line)] bg-white/95 px-4 py-3 text-[11px] text-[var(--ink)]">
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 text-[var(--accent)]" />
                   <div className="flex-1">

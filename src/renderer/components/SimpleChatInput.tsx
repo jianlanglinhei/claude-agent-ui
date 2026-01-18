@@ -30,15 +30,15 @@ export default function SimpleChatInput({
   };
 
   return (
-    <div className="border-t border-[var(--line)] bg-[var(--paper-strong)]/70 px-6 py-4 backdrop-blur">
-      <div className="mx-auto flex max-w-3xl items-end gap-3 rounded-2xl border border-[var(--line)] bg-[var(--paper-strong)] px-4 py-3 shadow-[var(--shadow-soft)]">
+    <div className="border-t border-[var(--line)] px-6 py-4">
+      <div className="mx-auto flex max-w-3xl items-end gap-3 rounded-2xl border border-[var(--line)] bg-transparent px-4 py-3">
         <textarea
           ref={textareaRef}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
           rows={1}
-          placeholder="输入bug，解决 bug"
+          placeholder="输入你要解决的bug 链接"
           className="min-h-[44px] w-full resize-none bg-transparent text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]"
         />
         <button
