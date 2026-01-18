@@ -69,10 +69,18 @@ function heartbeatChunk(): Uint8Array {
   return encoder.encode(': ping\n\n');
 }
 
-export function broadcast(event: string, data: unknown): void {
-  console.log(`[sse] ${event} -> ${summarizePayload(event, data)}`);
+export function broadcast(event: string, data: unknown, sessionId?: string): void {
+  // Wrap data with sessionId if provided
+  const payload = sessionId
+    ? typeof data === 'object' && data !== null
+      ? { ...data, sessionId }
+      : { data, sessionId }
+    : data;
+  console.log(
+    `[sse] ${event} -> ${summarizePayload(event, payload)} ${sessionId ? `session=${sessionId}` : ''}`
+  );
   for (const client of clients) {
-    client.send(event, data);
+    client.send(event, payload);
   }
 }
 

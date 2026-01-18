@@ -19,7 +19,11 @@ const JSON_EVENTS = new Set([
   'chat:system-init',
   'chat:logs',
   'chat:status',
-  'chat:agent-error'
+  'chat:agent-error',
+  'session:created',
+  'session:deleted',
+  'session:switched',
+  'session:updated'
 ]);
 
 const STRING_EVENTS = new Set([
@@ -51,6 +55,17 @@ function handleEvent(event: MessageEvent<string>): void {
   }
 
   if (STRING_EVENTS.has(type)) {
+    // Try to parse as JSON first (wrapped with sessionId)
+    try {
+      const parsed = JSON.parse(data);
+      // If it's wrapped with sessionId, extract the data field
+      if (parsed && typeof parsed === 'object' && 'data' in parsed && 'sessionId' in parsed) {
+        emitEvent(type, parsed.data);
+        return;
+      }
+    } catch {
+      // Not JSON, use as-is
+    }
     emitEvent(type, data);
   }
 }

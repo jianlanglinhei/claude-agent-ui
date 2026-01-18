@@ -10,7 +10,13 @@ import type {
   ToolUse
 } from '@/types/stream';
 
-import type { SendMessagePayload, SendMessageResponse } from '../../shared/types/ipc';
+import type {
+  SendMessagePayload,
+  SendMessageResponse,
+  Session,
+  SessionActionPayload,
+  SuccessResponse
+} from '../../shared/types/ipc';
 import type { SystemInitInfo } from '../../shared/types/system';
 import { onEvent } from './eventBus';
 
@@ -60,10 +66,30 @@ async function postJson<T>(path: string, body?: unknown): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function getJson<T>(path: string): Promise<T> {
+  const response = await fetch(path, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  return (await response.json()) as T;
+}
+
 export const chatClient = {
+  // Message operations
   sendMessage: (payload: SendMessagePayload): Promise<SendMessageResponse> =>
     postJson('/chat/send', payload),
-  stopMessage: (): Promise<{ success: boolean; error?: string }> => postJson('/chat/stop'),
+  stopMessage: (sessionId?: string): Promise<SuccessResponse> =>
+    postJson('/chat/stop', sessionId ? { sessionId } : {}),
+
+  // Session management
+  createSession: (): Promise<Session> => postJson('/session/create'),
+  listSessions: (): Promise<Session[]> => getJson('/session/list'),
+  switchSession: (sessionId: string): Promise<SuccessResponse> =>
+    postJson('/session/switch', { sessionId } as SessionActionPayload),
+  deleteSession: (sessionId: string): Promise<SuccessResponse> =>
+    postJson('/session/delete', { sessionId } as SessionActionPayload),
+
+  // Event listeners - Chat events
   onInit: (callback: (payload: ChatInitPayload) => void) => onEvent('chat:init', callback),
   onMessageReplay: (callback: (payload: ChatMessageReplayPayload) => void) =>
     onEvent('chat:message-replay', callback),
@@ -117,5 +143,13 @@ export const chatClient = {
   onAgentError: (callback: (payload: ChatAgentErrorPayload) => void) =>
     onEvent('chat:agent-error', callback),
   onSystemInit: (callback: (payload: ChatSystemInitPayload) => void) =>
-    onEvent('chat:system-init', callback)
+    onEvent('chat:system-init', callback),
+
+  // Event listeners - Session events
+  onSessionCreated: (callback: (session: Session) => void) => onEvent('session:created', callback),
+  onSessionDeleted: (callback: (data: { sessionId: string }) => void) =>
+    onEvent('session:deleted', callback),
+  onSessionSwitched: (callback: (data: { sessionId: string }) => void) =>
+    onEvent('session:switched', callback),
+  onSessionUpdated: (callback: (session: Session) => void) => onEvent('session:updated', callback)
 };

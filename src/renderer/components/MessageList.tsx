@@ -43,11 +43,11 @@ export default function MessageList({
         <div className="mx-auto flex w-full max-w-2xl flex-1 items-center justify-center px-4">
           <div className="soft-panel w-full px-6 py-8 text-center">
             <p className="text-[10px] font-semibold tracking-[0.45em] text-[var(--ink-muted)] uppercase">
-              Agent UI
+              AUTOFIX
             </p>
             <h2 className="font-display mt-3 text-2xl text-[var(--ink)]">{suggestion}</h2>
             <p className="mt-3 text-sm text-[var(--ink-muted)]">
-              Try asking for a plan, a refactor, or a quick diagnosis.
+              粘贴 bug 链接，AI 将帮你快速定位和修复
             </p>
           </div>
         </div>

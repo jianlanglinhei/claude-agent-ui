@@ -6,7 +6,7 @@ import type { Message, SubagentToolCall, ToolInput } from '@/types/chat';
 import type { ToolUse } from '@/types/stream';
 import { parsePartialJson } from '@/utils/parsePartialJson';
 
-export function useClaudeChat(): {
+export function useClaudeChat(activeSessionId?: string | null): {
   messages: Message[];
   setMessages: Dispatch<SetStateAction<Message[]>>;
   isLoading: boolean;
@@ -17,7 +17,24 @@ export function useClaudeChat(): {
   const isStreamingRef = useRef(false);
   const debugMessagesRef = useRef<string[]>([]);
   const seenIdsRef = useRef<Set<string>>(new Set());
+  const currentSessionRef = useRef<string | null>(activeSessionId || null);
   type MessageWire = Omit<Message, 'timestamp'> & { timestamp: string };
+
+  // Clear messages when session changes
+  useEffect(() => {
+    const prevSession = currentSessionRef.current;
+    currentSessionRef.current = activeSessionId || null;
+
+    if (prevSession !== activeSessionId) {
+      // Schedule state updates for next render
+      Promise.resolve().then(() => {
+        seenIdsRef.current.clear();
+        setMessages([]);
+        setIsLoading(false);
+        isStreamingRef.current = false;
+      });
+    }
+  }, [activeSessionId]);
 
   const updateSubagentCalls = (
     parentToolUseId: string,
@@ -615,21 +632,19 @@ export function useClaudeChat(): {
       }
     );
 
-    const unsubscribeSubagentToolResultDelta = chatClient.onSubagentToolResultDelta(
-      (data: { parentToolUseId: string; toolUseId: string; delta: string }) => {
-        updateSubagentCalls(data.parentToolUseId, (calls) =>
-          calls.map((call) =>
-            call.id === data.toolUseId ?
-              {
-                ...call,
-                result: `${call.result ?? ''}${data.delta}`,
-                isLoading: true
-              }
-            : call
-          )
-        );
-      }
-    );
+    const unsubscribeSubagentToolResultDelta = chatClient.onSubagentToolResultDelta((data) => {
+      updateSubagentCalls(data.parentToolUseId, (calls) =>
+        calls.map((call) =>
+          call.id === data.toolUseId ?
+            {
+              ...call,
+              result: `${call.result ?? ''}${data.delta}`,
+              isLoading: true
+            }
+          : call
+        )
+      );
+    });
 
     const unsubscribeSubagentToolResultComplete = chatClient.onSubagentToolResultComplete(
       (data: {

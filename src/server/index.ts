@@ -3,19 +3,29 @@ import { mkdir, stat } from 'fs/promises';
 import { basename, join, relative, resolve } from 'path';
 
 import {
+  createSession,
+  deleteSession,
   enqueueUserMessage,
+  getActiveSessionId,
   getAgentState,
   getLogLines,
   getMessages,
   getSystemInitInfo,
   initializeAgent,
-  interruptCurrentResponse
+  interruptCurrentResponse,
+  listSessions,
+  switchSession
 } from './agent-session';
 import { buildDirectoryTree } from './dir-info';
 import { createSseClient } from './sse';
 
 type SendMessagePayload = {
   text?: string;
+  sessionId?: string;
+};
+
+type SessionActionPayload = {
+  sessionId?: string;
 };
 
 function parseArgs(argv: string[]): { agentDir: string; initialPrompt?: string; port: number } {
@@ -151,15 +161,18 @@ async function main() {
 
       if (pathname === '/chat/stream' && request.method === 'GET') {
         const { client, response } = createSseClient(() => {});
-        const state = getAgentState();
-        client.send('chat:init', state);
-        getMessages().forEach((message) => {
-          client.send('chat:message-replay', { message });
-        });
-        client.send('chat:logs', { lines: getLogLines() });
-        const systemInitInfo = getSystemInitInfo();
-        if (systemInitInfo) {
-          client.send('chat:system-init', { info: systemInitInfo });
+        const activeSessionId = getActiveSessionId();
+        const state = getAgentState(activeSessionId || undefined);
+        client.send('chat:init', { ...state, sessions: listSessions() });
+        if (activeSessionId) {
+          getMessages(activeSessionId).forEach((message) => {
+            client.send('chat:message-replay', { message });
+          });
+          client.send('chat:logs', { lines: getLogLines(activeSessionId) });
+          const systemInitInfo = getSystemInitInfo(activeSessionId);
+          if (systemInitInfo) {
+            client.send('chat:system-init', { info: systemInitInfo });
+          }
         }
         return response;
       }
@@ -177,8 +190,10 @@ async function main() {
         }
 
         try {
-          console.log(`[chat] send text="${text.slice(0, 200)}"`);
-          await enqueueUserMessage(text);
+          console.log(
+            `[chat] send text="${text.slice(0, 200)}" session=${payload.sessionId || 'active'}`
+          );
+          await enqueueUserMessage(text, payload.sessionId);
           return jsonResponse({ success: true });
         } catch (error) {
           return jsonResponse(
@@ -189,9 +204,15 @@ async function main() {
       }
 
       if (pathname === '/chat/stop' && request.method === 'POST') {
+        let payload: SessionActionPayload = {};
         try {
-          console.log('[chat] stop');
-          const stopped = await interruptCurrentResponse();
+          payload = (await request.json()) as SessionActionPayload;
+        } catch {
+          // Payload is optional for backward compatibility
+        }
+        try {
+          console.log(`[chat] stop session=${payload.sessionId || 'active'}`);
+          const stopped = await interruptCurrentResponse(payload.sessionId);
           if (!stopped) {
             return jsonResponse({ success: false, error: 'No active response to stop.' }, 400);
           }
@@ -299,6 +320,86 @@ async function main() {
         } catch (error) {
           return jsonResponse(
             { error: error instanceof Error ? error.message : 'Unknown error' },
+            500
+          );
+        }
+      }
+
+      // Session management endpoints
+      if (pathname === '/session/create' && request.method === 'POST') {
+        try {
+          console.log('[session] create');
+          const session = createSession();
+          return jsonResponse(session);
+        } catch (error) {
+          return jsonResponse(
+            { error: error instanceof Error ? error.message : 'Unknown error' },
+            500
+          );
+        }
+      }
+
+      if (pathname === '/session/list' && request.method === 'GET') {
+        try {
+          console.log('[session] list');
+          const sessions = listSessions();
+          return jsonResponse(sessions);
+        } catch (error) {
+          return jsonResponse(
+            { error: error instanceof Error ? error.message : 'Unknown error' },
+            500
+          );
+        }
+      }
+
+      if (pathname === '/session/switch' && request.method === 'POST') {
+        let payload: SessionActionPayload;
+        try {
+          payload = (await request.json()) as SessionActionPayload;
+        } catch {
+          return jsonResponse({ success: false, error: 'Invalid JSON payload.' }, 400);
+        }
+        if (!payload.sessionId) {
+          return jsonResponse({ success: false, error: 'sessionId is required.' }, 400);
+        }
+        try {
+          console.log(`[session] switch to ${payload.sessionId}`);
+          const success = switchSession(payload.sessionId);
+          if (!success) {
+            return jsonResponse({ success: false, error: 'Session not found.' }, 404);
+          }
+          return jsonResponse({ success: true });
+        } catch (error) {
+          return jsonResponse(
+            { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
+            500
+          );
+        }
+      }
+
+      if (pathname === '/session/delete' && request.method === 'POST') {
+        let payload: SessionActionPayload;
+        try {
+          payload = (await request.json()) as SessionActionPayload;
+        } catch {
+          return jsonResponse({ success: false, error: 'Invalid JSON payload.' }, 400);
+        }
+        if (!payload.sessionId) {
+          return jsonResponse({ success: false, error: 'sessionId is required.' }, 400);
+        }
+        try {
+          console.log(`[session] delete ${payload.sessionId}`);
+          const success = deleteSession(payload.sessionId);
+          if (!success) {
+            return jsonResponse(
+              { success: false, error: 'Session not found or cannot be deleted.' },
+              404
+            );
+          }
+          return jsonResponse({ success: true });
+        } catch (error) {
+          return jsonResponse(
+            { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
             500
           );
         }

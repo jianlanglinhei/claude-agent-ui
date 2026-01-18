@@ -45,7 +45,7 @@ export default function SimpleChatInput({
           type="button"
           onClick={onSend}
           disabled={isLoading || !value.trim()}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--paper-strong)] transition-colors hover:bg-[var(--accent)] disabled:bg-[var(--ink-muted)] disabled:cursor-not-allowed"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--paper-strong)] transition-colors hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:bg-[var(--ink-muted)]"
         >
           <ArrowUp className="h-4 w-4" />
         </button>

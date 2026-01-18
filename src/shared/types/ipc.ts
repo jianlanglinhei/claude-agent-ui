@@ -21,7 +21,21 @@ export interface SerializedAttachmentPayload {
 
 export interface SendMessagePayload {
   text: string;
+  sessionId?: string;
   attachments?: SerializedAttachmentPayload[];
+}
+
+export interface Session {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastMessageAt: string;
+  state: 'idle' | 'running' | 'error';
+  messageCount: number;
+}
+
+export interface SessionActionPayload {
+  sessionId: string;
 }
 
 export interface GetChatModelPreferenceResponse {
